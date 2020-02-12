@@ -2,15 +2,48 @@
 const express = require('express');
 // bring in the data
 const Users = require('./userDb.js');
+const Posts = require('../posts/postDb.js');
 // start the router 
 const router = express.Router();
 
 router.post('/', (req, res) => {
   // do your magic!
+  const newUser = req.body
+
+  if (newUser.name) {
+    Users.insert(newUser).then((resource) => {
+      res.status(200).json(resource)
+    }).catch((error) => {
+      res.status(500).json({message:"request could not be completed."})
+    })
+  } else {
+    res.status(400).json({message:"Please add a name to the new user."})
+  }
 });
 
 router.post('/:id/posts', (req, res) => {
   // do your magic!
+  const { id } = req.params
+  const newPost = {...req.body, user_id : id}
+
+  if (newPost.text && newPost.user_id) {
+    Users.getById(id).then((resource) => {
+      if (resource) {
+        Posts.insert(newPost).then((post) => {
+          res.status(200).json(post)
+        }).catch((error) => {
+          res.status(500).json({message:"request could not be complete."})
+        })
+      } else {
+        res.status(404).json({message:"A user with this id could not be found."})
+      }
+    }).catch((error) => {
+      res.status(500).json({message:"request could not be complete."})
+    })
+  } else {
+    res.status(400).json({message:"Please add text and a user_id to the post"})
+  }
+
 });
 
 router.get('/', (req, res) => {
@@ -98,7 +131,7 @@ router.put('/:id', (req, res) => {
 //custom middleware
 
 function validateUserId(req, res, next) {
-  // do your magic!
+  
 }
 
 function validateUser(req, res, next) {
