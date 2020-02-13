@@ -6,44 +6,27 @@ const Posts = require('../posts/postDb.js');
 // start the router 
 const router = express.Router();
 
-router.post('/', (req, res) => {
+router.post('/', validateUser, (req, res) => {
   // do your magic!
   const newUser = req.body
 
-  if (newUser.name) {
-    Users.insert(newUser).then((resource) => {
-      res.status(200).json(resource)
-    }).catch((error) => {
-      res.status(500).json({message:"request could not be completed."})
-    })
-  } else {
-    res.status(400).json({message:"Please add a name to the new user."})
-  }
+  Users.insert(newUser).then((resource) => {
+    res.status(200).json(resource)
+  }).catch((error) => {
+    res.status(500).json({message:"request could not be complete."})
+  })
 });
 
-router.post('/:id/posts', (req, res) => {
+router.post('/:id/posts', validateUserId, validatePost, (req, res) => {
   // do your magic!
   const { id } = req.params
   const newPost = {...req.body, user_id : id}
 
-  if (newPost.text && newPost.user_id) {
-    Users.getById(id).then((resource) => {
-      if (resource) {
-        Posts.insert(newPost).then((post) => {
-          res.status(200).json(post)
-        }).catch((error) => {
-          res.status(500).json({message:"request could not be complete."})
-        })
-      } else {
-        res.status(404).json({message:"A user with this id could not be found."})
-      }
-    }).catch((error) => {
-      res.status(500).json({message:"request could not be complete."})
-    })
-  } else {
-    res.status(400).json({message:"Please add text and a user_id to the post"})
-  }
-
+  Posts.insert(newPost).then((post) => {
+    res.status(200).json(post)
+  }).catch((error) => {
+    res.status(500).json({message:"request could not be completed."})
+  })
 });
 
 router.get('/', (req, res) => {
@@ -55,45 +38,28 @@ router.get('/', (req, res) => {
   })
 });
 
-router.get('/:id', (req, res) => {
+router.get('/:id', validateUserId, (req, res) => {
   // do your magic!
   const { id } = req.params
-
-  Users.getById(id).then((resource) => {
-    if (resource) {
-      res.status(201).json(resource)
-    } else {
-      res.status(404).json({ message:"A user with this id could not be found." })
-    }
-  }).catch((error) => {
-    res.status(500).json({ message:"request could not be completed." })
-  })
-});
-
-router.get('/:id/posts', (req, res) => {
-  // do your magic!
-  const { id } = req.params
-
-  Users.getById(id).then((resource) => {
-    if (resource) {
-      Users.getUserPosts(id).then((posts) => {
-        if (posts.length === 0) {
-          res.status(299).json({message:"This user does not have any posts."})
-        } else {
-          res.status(201).json(posts)
-        }
-      }).catch((error) => {
-        res.status(500).json({message:"The user exists but the user's posts could not be retrieved."})
-      })
-    } else {
-      res.status(404).json({message:"A user with this id could not be found"})
-    }
+  Users.getById(id).then((user) => {
+    res.status(200).json(user)
   }).catch((error) => {
     res.status(500).json({message:"request could not be completed."})
   })
 });
 
-router.delete('/:id', (req, res) => {
+router.get('/:id/posts', validateUserId, (req, res) => {
+  // do your magic!
+  const { id } = req.params
+
+  Users.getUserPosts(id).then((posts) => {
+    res.status(200).json(posts)
+  }).catch((error) => {
+    res.status(500).json({message:"request could not be completed."})
+  })
+});
+
+router.delete('/:id', validateUserId, (req, res) => {
   // do your magic!
   const { id } = req.params
 
@@ -108,38 +74,86 @@ router.delete('/:id', (req, res) => {
   })
 });
 
-router.put('/:id', (req, res) => {
+router.put('/:id', validateUserId, (req, res) => {
   // do your magic!
   const { id } = req.params
   const updatedUser = req.body
-
-  if (req.body.name) {
+  
+if (req.body.name) {
   Users.update(id, updatedUser).then((num) => {
-    if (num === 0) {
-      res.status(404).json({message:"The user with this id could not be found."})
-    } else {
-      res.status(200).json(num)
-    }
+    res.status(200).json(num)
   }).catch((error) => {
-    res.status(500).json({ message:"request could not be completed." })
+    res.status(500).json({message:"request could not be completed."})
   })
 } else {
-  res.status(400).json({ message:"Please provide a name for the user." })
+  res.status(400).json({message:"Please provide a name."})
 }
+
+//   if (req.body.name) {
+//   Users.update(id, updatedUser).then((num) => {
+//     if (num === 0) {
+//       res.status(404).json({message:"The user with this id could not be found."})
+//     } else {
+//       res.status(200).json(num)
+//     }
+//   }).catch((error) => {
+//     res.status(500).json({ message:"request could not be completed." })
+//   })
+// } else {
+//   res.status(400).json({ message:"Please provide a name for the user." })
+// }
 });
 
 //custom middleware
 
 function validateUserId(req, res, next) {
-  
+  const { id } = req.params
+
+  Users.getById(id).then((user) => {
+    if (user) {
+      req.user = user
+      next()
+    } else {
+      res.status(404).json({message:"A user with this id could not be found."})
+    }
+  }).catch((error) => {
+    res.status(500).json({message:"request could not be completed"})
+  })
 }
 
 function validateUser(req, res, next) {
   // do your magic!
+  // const user = req.body
+  // if (!req.body) {
+  //   res.status(400).json({message:"missing user data"})
+  // } else if (!req.body.name) {
+  //   res.status(400).json({message:"missing required text field"})
+  // } else {
+  //   Users.insert().then((newUser) => {
+  //     req.body = newUser
+  //     next()
+  //   }).catch((error) => {
+  //     res.status(500).json({message:"request did not work."})
+  //   })
+  // }
+  if (!req.body) {
+    res.status(400).json({message:"missing user data."})
+  } else if (!req.body.name) {
+    res.status(400).json({message:"missing required text field."})
+  } else {
+    next()
+  }
 }
 
 function validatePost(req, res, next) {
   // do your magic!
+  if (!req.body) {
+    res.status(400).json({message:"missing post data."})
+  } else if (!req.body.text) {
+    res.status(400).json({message:"missing post text."})
+  } else {
+    next()
+  }
 }
 
 module.exports = router;
